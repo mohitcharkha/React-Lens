@@ -288,3 +288,139 @@ export const getPendingFollowRequest = async () => {
   });
   console.log(res);
 };
+
+const CREATE_PROFILE = `mutation CreateProfile {
+    createProfile(request:{ 
+                  handle: "newtestuser",
+                  profilePictureUri: null,
+                  followNFTURI: null,
+                  followModule: null
+                  }) {
+      ... on RelayerResult {
+        txHash
+      }
+      ... on RelayError {
+        reason
+      }
+      __typename
+    }
+  }`;
+
+export const createProfile = () => {
+  return apolloClient.mutate({
+    mutation: gql(CREATE_PROFILE),
+  });
+};
+
+const CREATE_POST = `mutation CreatePostTypedData {
+    createPostTypedData(request: {
+      profileId: "0x5285",
+      contentURI: "ipfs://bafkreieqpzbdwrhzafbbrmxn3247eo6tx25rjztf3kqlanwz2ydqv45rbu",
+      collectModule: {
+        revertCollectModule: true
+      },
+    referenceModule: {
+        followerOnlyReferenceModule: false
+    }
+    }) {
+      id
+      expiresAt
+      typedData {
+        types {
+          PostWithSig {
+            name
+            type
+          }
+        }
+        domain {
+          name
+          chainId
+          version
+          verifyingContract
+        }
+        value {
+          nonce
+          deadline
+          profileId
+          contentURI
+          collectModule
+          collectModuleInitData
+          referenceModule
+          referenceModuleInitData
+        }
+      }
+    }
+  }`;
+
+export const createPost = async () => {
+  return apolloClient.mutate({
+    mutation: gql(CREATE_POST),
+  });
+};
+
+// dispatcher: "0xE1ec35AE9ceb98d3b6DB6A4e0aa856BEA969B4DF"
+// dispatcher: "0x1638CF7D0E72B2e3b5eBECBe794D77c90aB02b26",
+const SET_DISPATCHER = `mutation CreateSetDispatcherTypedData {
+    createSetDispatcherTypedData(request:{
+        profileId: "0x5285",
+    }) {
+      id
+      expiresAt
+      typedData {
+        types {
+          SetDispatcherWithSig {
+            name
+            type
+          }
+        }
+        domain {
+          name
+          chainId
+          version
+          verifyingContract
+        }
+        value {
+          nonce
+          deadline
+          profileId
+          dispatcher
+        }
+      }
+    }
+  }`;
+
+export const setDispatcher = async () => {
+  return apolloClient.mutate({
+    mutation: gql(SET_DISPATCHER),
+  });
+};
+
+const POST_WITH_DISPATCHER = `mutation CreatePostViaDispatcher {
+    createPostViaDispatcher(
+      request: {
+        profileId: "0x5285"
+        contentURI: "ipfs://bafkreicrnhj3wuyishy7io7oyppy6dvpxxl7guraacypb76bufbuqznzoy",
+        collectModule: {
+          revertCollectModule: true
+        },
+      referenceModule: {
+          followerOnlyReferenceModule: false
+      }
+      }) {
+      ... on RelayerResult {
+        txHash
+        txId
+      }
+      ... on RelayError {
+        reason
+      }
+    }
+  }`;
+
+export const postWithDispatcher = async () => {
+  console.log("calling");
+  const res = await apolloClient.mutate({
+    mutation: gql(POST_WITH_DISPATCHER),
+  });
+  console.log({ res });
+};

@@ -9,20 +9,30 @@ import {
   WagmiConfig,
   useAccount,
   useSignMessage,
+  useSignTypedData,
+  useContract,
+  useSigner,
 } from "wagmi";
 import { publicProvider } from "wagmi/providers/public";
 import { getDefaultWallets, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import {
   apolloClient,
   approveFollow,
+  createPost,
+  createProfile,
   getPendingFollowRequest,
   getPublications,
+  postWithDispatcher,
   requestFollow,
+  setDispatcher,
 } from "./utils";
+import { ABI, contractAddress } from "./Constats";
+import { utils } from "ethers";
 
 function Lens() {
   const challenge = useRef(null);
   const challengeSignature = useRef(null);
+  const { splitSignature } = utils;
 
   const GET_CHALLENGE = `query($request: ChallengeRequest!) {
   challenge(request: $request) {
@@ -135,6 +145,125 @@ function Lens() {
     });
   };
 
+  const [typedData, setTypedData] = useState(null);
+  const [signature, setSignature] = useState(null);
+
+  async function createNewPost() {
+    const response = await createPost();
+    setTypedData(response?.data?.createPostTypedData?.typedData);
+    console.log(response?.data?.createPostTypedData?.typedData);
+  }
+
+  async function createSetDispatcher() {
+    const response = await setDispatcher();
+    setTypedData(response?.data?.createSetDispatcherTypedData?.typedData);
+    console.log(response?.data?.createSetDispatcherTypedData?.typedData);
+  }
+  function SignTypedData() {
+    delete typedData.domain.__typename;
+    delete typedData.types.__typename;
+    delete typedData.value.__typename;
+    const { data, status, signTypedData } = useSignTypedData({
+      domain: typedData.domain,
+      types: typedData.types,
+      value: typedData.value,
+    });
+
+    return (
+      <div>
+        <button
+          onClick={() => {
+            console.log("signing types data", typedData);
+            signTypedData();
+          }}
+        >
+          Sign data
+        </button>
+        <div>Status: {status}</div>
+        <div
+          onClick={() => {
+            setSignature(data);
+          }}
+        >
+          Signature: {data}
+        </div>
+      </div>
+    );
+  }
+
+  function SignDispatcherContract() {
+    const { data: signer } = useSigner();
+
+    const contract = useContract({
+      address: contractAddress,
+      abi: ABI,
+      signerOrProvider: signer,
+    });
+    console.log({ signer, contract });
+    async function signDispatcherContract() {
+      const { r, s, v } = splitSignature(signature);
+      console.log({ r, s, v });
+      console.log({ values: typedData.value });
+      contract
+        .setDispatcherWithSig({
+          profileId: typedData.value.profileId,
+          dispatcher: typedData.value.dispatcher,
+          sig: {
+            v,
+            r,
+            s,
+            deadline: typedData.value.deadline,
+          },
+        })
+        .then((res) => {
+          console.log({ res });
+        })
+        .catch((err) => {
+          console.log({ err });
+        });
+    }
+    return (
+      <button onClick={signDispatcherContract}>Sign Dispatcher Contract</button>
+    );
+  }
+
+  function SignPostContract() {
+    const { data: signer } = useSigner();
+
+    const contract = useContract({
+      address: contractAddress,
+      abi: ABI,
+      signerOrProvider: signer,
+    });
+    console.log({ signer, contract });
+    async function signPostContract() {
+      const { r, s, v } = splitSignature(signature);
+      console.log({ r, s, v });
+      console.log({ values: typedData.value });
+      contract
+        .postWithSig({
+          profileId: typedData.value.profileId,
+          contentURI: typedData.value.contentURI,
+          collectModule: typedData.value.collectModule,
+          collectModuleInitData: typedData.value.collectModuleInitData,
+          referenceModule: typedData.value.referenceModule,
+          referenceModuleInitData: typedData.value.referenceModuleInitData,
+          sig: {
+            v,
+            r,
+            s,
+            deadline: typedData.value.deadline,
+          },
+        })
+        .then((res) => {
+          console.log({ res });
+        })
+        .catch((err) => {
+          console.log({ err });
+        });
+    }
+    return <button onClick={signPostContract}>Sign Post Contract</button>;
+  }
   return (
     <WagmiConfig client={wagmiClient}>
       <RainbowKitProvider chains={chains}>
@@ -147,6 +276,13 @@ function Lens() {
         <button onClick={getPendingFollowRequest}>
           Pending Follow Request
         </button>
+        <button onClick={createProfile}>Create Profile</button>
+        <button onClick={createNewPost}>Create Post</button>
+        <button onClick={createSetDispatcher}>Set dispatcher</button>
+        <button onClick={postWithDispatcher}>Post with dispatcher</button>
+        {typedData ? <SignTypedData /> : null}
+        <SignPostContract />
+        <SignDispatcherContract />
       </RainbowKitProvider>
     </WagmiConfig>
   );
