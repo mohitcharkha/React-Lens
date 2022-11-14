@@ -108,7 +108,14 @@ export const getPublications = async () => {
 const REQUEST_FOLLOW_QUERY = `
   mutation {
     createFollowTypedData(
-      request: { follow: [{ profile: "0x01", followModule: null }] }
+      request: { follow: [{ profile: "0x5285", followModule: {
+        feeFollowModule: {
+          amount: {
+            currency: "0x3C68CE8504087f89c640D02d133646d98e64ddd9",
+            value: "0.001"
+              }
+        }  
+     } }] }
     ) {
       id
       expiresAt
@@ -142,10 +149,9 @@ const REQUEST_FOLLOW_QUERY = `
   }
 `;
 export const requestFollow = async () => {
-  const { data } = await apolloClient.mutate({
+  return apolloClient.mutate({
     mutation: gql(REQUEST_FOLLOW_QUERY),
   });
-  console.log({ data });
 };
 
 const APPROVE_FOLLOW = `
@@ -291,7 +297,7 @@ export const getPendingFollowRequest = async () => {
 
 const CREATE_PROFILE = `mutation CreateProfile {
     createProfile(request:{ 
-                  handle: "newtestuser",
+                  handle: "UserWithFollowModule",
                   profilePictureUri: null,
                   followNFTURI: null,
                   followModule: null
@@ -306,9 +312,43 @@ const CREATE_PROFILE = `mutation CreateProfile {
     }
   }`;
 
-export const createProfile = () => {
-  return apolloClient.mutate({
+export const createProfile = async () => {
+  const res = await apolloClient.mutate({
     mutation: gql(CREATE_PROFILE),
+  });
+  console.log({ res });
+};
+
+const SET_DEFAULT_PROFILE = `mutation CreateSetDefaultProfileTypedData {
+  createSetDefaultProfileTypedData(request: { profileId: "0x5285"}) {
+    id
+    expiresAt
+    typedData {
+      types {
+        SetDefaultProfileWithSig {
+          name
+          type
+        }
+      }
+      domain {
+        name
+        chainId
+        version
+        verifyingContract
+      }
+      value {
+        nonce
+        deadline
+        wallet
+        profileId
+      }
+    }
+  }
+}`;
+
+export const setDefaultProfile = () => {
+  return apolloClient.mutate({
+    mutation: gql(SET_DEFAULT_PROFILE),
   });
 };
 
@@ -423,4 +463,49 @@ export const postWithDispatcher = async () => {
     mutation: gql(POST_WITH_DISPATCHER),
   });
   console.log({ res });
+};
+
+// currency: "0x3C68CE8504087f89c640D02d133646d98e64ddd9",
+const SET_FOLLOW_MODULE = `mutation CreateSetFollowModuleTypedData {
+  createSetFollowModuleTypedData(request:{
+    profileId: "0x5285",
+    followModule: {
+      feeFollowModule: {
+        amount: {
+          currency: "0x3C68CE8504087f89c640D02d133646d98e64ddd9",
+          value: "0.001"
+            },
+            recipient: "0xE1ec35AE9ceb98d3b6DB6A4e0aa856BEA969B4DF"
+        }
+     }
+  }) {
+    id
+    expiresAt
+    typedData {
+      types {
+        SetFollowModuleWithSig {
+          name
+          type
+        }
+      }
+      domain {
+        name
+        chainId
+        version
+        verifyingContract
+      }
+      value {
+        nonce
+        deadline
+        profileId
+        followModule
+        followModuleInitData
+      }
+    }
+  }
+}`;
+export const setFollowModule = async () => {
+  return await apolloClient.mutate({
+    mutation: gql(SET_FOLLOW_MODULE),
+  });
 };

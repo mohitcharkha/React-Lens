@@ -24,7 +24,9 @@ import {
   getPublications,
   postWithDispatcher,
   requestFollow,
+  setDefaultProfile,
   setDispatcher,
+  setFollowModule,
 } from "./utils";
 import { ABI, contractAddress } from "./Constats";
 import { utils } from "ethers";
@@ -139,11 +141,11 @@ function Lens() {
     });
   };
 
-  const followProfile = () => {
-    requestFollow().then((pubs) => {
-      console.log(pubs);
-    });
-  };
+  async function followProfile() {
+    const response = await requestFollow();
+    setTypedData(response?.data?.createFollowTypedData?.typedData);
+    console.log(response?.data?.createFollowTypedData?.typedData);
+  }
 
   const [typedData, setTypedData] = useState(null);
   const [signature, setSignature] = useState(null);
@@ -152,6 +154,16 @@ function Lens() {
     const response = await createPost();
     setTypedData(response?.data?.createPostTypedData?.typedData);
     console.log(response?.data?.createPostTypedData?.typedData);
+  }
+  async function setProfileAsDefault() {
+    const response = await setDefaultProfile();
+    setTypedData(response?.data?.createSetDefaultProfileTypedData?.typedData);
+    console.log(response?.data?.createSetDefaultProfileTypedData?.typedData);
+  }
+  async function setPaidFollowModule() {
+    const response = await setFollowModule();
+    setTypedData(response?.data?.createSetFollowModuleTypedData?.typedData);
+    console.log(response?.data?.createSetFollowModuleTypedData?.typedData);
   }
 
   async function createSetDispatcher() {
@@ -227,6 +239,43 @@ function Lens() {
     );
   }
 
+  function SignSetDefaultProfileContract() {
+    const { data: signer } = useSigner();
+
+    const contract = useContract({
+      address: contractAddress,
+      abi: ABI,
+      signerOrProvider: signer,
+    });
+    console.log({ signer, contract });
+    async function signSetDefaultProfileContract() {
+      const { r, s, v } = splitSignature(signature);
+      console.log({ r, s, v });
+      console.log({ values: typedData.value });
+      contract
+        .setDefaultProfileWithSig({
+          wallet: typedData.value.wallet,
+          profileId: typedData.value.profileId,
+          sig: {
+            v,
+            r,
+            s,
+            deadline: typedData.value.deadline,
+          },
+        })
+        .then((res) => {
+          console.log({ res });
+        })
+        .catch((err) => {
+          console.log({ err });
+        });
+    }
+    return (
+      <button onClick={signSetDefaultProfileContract}>
+        Sign Set Default Profile Contract
+      </button>
+    );
+  }
   function SignPostContract() {
     const { data: signer } = useSigner();
 
@@ -264,6 +313,76 @@ function Lens() {
     }
     return <button onClick={signPostContract}>Sign Post Contract</button>;
   }
+  function FollowContract() {
+    const { data: signer } = useSigner();
+
+    const contract = useContract({
+      address: contractAddress,
+      abi: ABI,
+      signerOrProvider: signer,
+    });
+    async function followContract() {
+      const { r, s, v } = splitSignature(signature);
+      console.log({ r, s, v });
+      console.log({ values: typedData.value });
+      contract
+        .followWithSig({
+          follower: address,
+          profileIds: typedData.value.profileIds,
+          datas: typedData.value.datas,
+          sig: {
+            v,
+            r,
+            s,
+            deadline: typedData.value.deadline,
+          },
+        })
+        .then((res) => {
+          console.log({ res });
+        })
+        .catch((err) => {
+          console.log({ err });
+        });
+    }
+    return <button onClick={followContract}>Sign Follow Contract</button>;
+  }
+  function SetFollowModuleContract() {
+    const { data: signer } = useSigner();
+
+    const contract = useContract({
+      address: contractAddress,
+      abi: ABI,
+      signerOrProvider: signer,
+    });
+    async function setFollowContract() {
+      const { r, s, v } = splitSignature(signature);
+      console.log({ r, s, v });
+      console.log({ values: typedData.value });
+      contract
+        .setFollowModuleWithSig({
+          profileId: typedData.value.profileId,
+          followModule: typedData.value.followModule,
+          followModuleInitData: typedData.value.followModuleInitData,
+          sig: {
+            v,
+            r,
+            s,
+            deadline: typedData.value.deadline,
+          },
+        })
+        .then((res) => {
+          console.log({ res });
+        })
+        .catch((err) => {
+          console.log({ err });
+        });
+    }
+    return (
+      <button onClick={setFollowContract}>
+        Sign Set Follow Module Contract
+      </button>
+    );
+  }
   return (
     <WagmiConfig client={wagmiClient}>
       <RainbowKitProvider chains={chains}>
@@ -277,12 +396,17 @@ function Lens() {
           Pending Follow Request
         </button>
         <button onClick={createProfile}>Create Profile</button>
+        <button onClick={setProfileAsDefault}>Set Default Profile</button>
         <button onClick={createNewPost}>Create Post</button>
         <button onClick={createSetDispatcher}>Set dispatcher</button>
         <button onClick={postWithDispatcher}>Post with dispatcher</button>
+        <button onClick={setPaidFollowModule}>Set Follow Module</button>
         {typedData ? <SignTypedData /> : null}
         <SignPostContract />
         <SignDispatcherContract />
+        <SignSetDefaultProfileContract />
+        <FollowContract />
+        <SetFollowModuleContract />
       </RainbowKitProvider>
     </WagmiConfig>
   );
