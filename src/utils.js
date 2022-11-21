@@ -47,6 +47,26 @@ export const getAuthentication = async (address, signature) => {
   });
 };
 
+const REFRESH_AUTHENTICATION = `
+mutation Refresh($refreshToken: Jwt!) {
+  refresh(request: {
+    refreshToken: $refreshToken
+  }) {
+    accessToken
+    refreshToken
+  }
+}
+`;
+
+export const refreshAuthentication = async () => {
+  return await apolloClient.mutate({
+    mutation: gql(REFRESH_AUTHENTICATION),
+    variables: {
+      refreshToken: window.sessionStorage.refreshToken,
+    },
+  });
+};
+
 const GET_PUBLICATIONS_QUERY = `
 query {
   explorePublications(request: {
@@ -125,18 +145,20 @@ export const getPublications = async () => {
   });
   return data.explorePublications.items;
 };
+// request: { follow: [{ profile: "0x5285", followModule: {
+//   feeFollowModule: {
+//    amount: {
+//     currency: "0x5B67676a984807a212b1c59eBFc9B3568a474F0a",
+//     value: "0.001"
+//       }
+//     }
+// } }] }
 
 const REQUEST_FOLLOW_QUERY = `
   mutation {
     createFollowTypedData(
-      request: { follow: [{ profile: "0x5285", followModule: {
-        feeFollowModule: {
-         amount: {
-          currency: "0x5B67676a984807a212b1c59eBFc9B3568a474F0a",
-          value: "0.001"
-            }
-          }
-      } }] }
+      request: { follow: [{ profile: "0x52d6", followModule: null
+       }] }
     ) {
       id
       expiresAt
@@ -250,10 +272,12 @@ export const setDefaultProfile = () => {
 
 const CREATE_POST = `mutation CreatePostTypedData($cid: Url!) {
     createPostTypedData(request: {
-      profileId: "0x5285",
+      profileId: "0x52d6",
       contentURI:  $cid,
       collectModule: {
-        revertCollectModule: true
+        freeCollectModule:  {
+          followerOnly: true
+       }
       },
     referenceModule: {
         followerOnlyReferenceModule: false
@@ -300,8 +324,8 @@ export const createPost = async (cid) => {
 
 const MIRROR_POST = `mutation CreateMirrorTypedData {
   createMirrorTypedData(request: {
-    profileId: "0x5285",
-    publicationId: "0x51c5-0x12",
+    profileId: "0x52d6",
+    publicationId: "0x5285-0x14",
     referenceModule: {
       followerOnlyReferenceModule: false
     }
@@ -343,8 +367,8 @@ export const mirrorPost = async () => {
 
 const COMMENT_POST = `mutation CreateCommentTypedData($cid: Url!) {
   createCommentTypedData(request: {
-    profileId: "0x5285",
-    publicationId: "0x51c5-0x12",
+    profileId: "0x52d6",
+    publicationId: "0x5285-0x14",
     contentURI: $cid,
     collectModule: {
       revertCollectModule: true
@@ -503,4 +527,55 @@ export const setFollowModule = async () => {
   return await apolloClient.mutate({
     mutation: gql(SET_FOLLOW_MODULE),
   });
+};
+
+const CREATE_COLLECT = `mutation CreateCollectTypedData {
+  createCollectTypedData(request: {
+    publicationId: "0x52d6-0x01"
+  }) {
+    id
+    expiresAt
+    typedData {
+      types {
+        CollectWithSig {
+          name
+          type
+        }
+      }
+      domain {
+        name
+        chainId
+        version
+        verifyingContract
+      }
+      value {
+        nonce
+        deadline
+        profileId
+        pubId
+        data
+      }
+    }
+  }
+}`;
+
+export const collectPost = async () => {
+  return await apolloClient.mutate({
+    mutation: gql(CREATE_COLLECT),
+  });
+};
+
+const ENABLED_CURR = `query EnabledModuleCurrencies {
+  enabledModuleCurrencies {
+    name
+    symbol
+    decimals
+    address
+  }
+}`;
+export const enabledCurr = async () => {
+  const res = await apolloClient.mutate({
+    mutation: gql(ENABLED_CURR),
+  });
+  console.log({ res });
 };

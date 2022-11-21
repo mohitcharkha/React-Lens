@@ -1,5 +1,9 @@
 import React from "react";
-import { getAuthentication, getChallengeText } from "../utils";
+import {
+  getAuthentication,
+  getChallengeText,
+  refreshAuthentication,
+} from "../utils";
 import { useAccount, useSignMessage } from "wagmi";
 
 function SignAuthentication() {
@@ -22,6 +26,13 @@ function SignAuthentication() {
     }
   };
 
+  const refreshAccesstoken = async () => {
+    const res = await refreshAuthentication(address);
+    const { accessToken, refreshToken } = res.data?.refresh;
+    window.sessionStorage.setItem("accessToken", accessToken);
+    window.sessionStorage.setItem("refreshToken", refreshToken);
+  };
+
   async function signMsg() {
     if (address) {
       const challenge = await getChallenge();
@@ -34,9 +45,19 @@ function SignAuthentication() {
     }
   }
   return (
-    <button type="submit" onClick={signMsg}>
-      Sign
-    </button>
+    <>
+      <h4>Authenticate</h4>
+      <button type="submit" onClick={signMsg}>
+        Sign
+      </button>
+      {window.sessionStorage.refreshToken ? (
+        <button type="submit" onClick={refreshAccesstoken}>
+          Refresh
+        </button>
+      ) : null}
+      <br />
+      <br />
+    </>
   );
 }
 

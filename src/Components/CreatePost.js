@@ -1,8 +1,9 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { commentPost, createPost } from "../utils";
 import { v4 as uuidv4 } from "uuid";
 
 function CreatePost({ type, setTypedData }) {
+  const [commentText, setCommentText] = useState("");
   async function createNewPost(cid) {
     console.log("create new post", { cid });
     const response = await createPost(cid);
@@ -22,10 +23,8 @@ function CreatePost({ type, setTypedData }) {
     "ipfs://bafkreidlk5omzwhe2o4uic6wzfy32otfjuix3zhd2tez5iupmgtxrnqjpi"
   );
 
-  async function handleChange(event) {
+  function uploadFile(event) {
     const mediaFiles = event.target.files;
-    // let formData = new FormData(); //formdata object
-    console.log({ image: mediaFiles[0] });
 
     const postData = {
       version: "2.0.0",
@@ -39,11 +38,13 @@ function CreatePost({ type, setTypedData }) {
       imageMimeType: mediaFiles[0]?.type,
       name: mediaFiles[0].name,
       attributes: [],
-      // media: mediaFiles,
-      tags: ["using_api_examples"],
-      appId: "api_examples_github",
+      appId: "react_lens",
     };
 
+    uploadDataToIpfs(postData);
+  }
+
+  async function uploadDataToIpfs(postData) {
     // formData.append("file", data);
     console.log({ postData });
     const response = await fetch("https://api.web3.storage/upload", {
@@ -55,22 +56,49 @@ function CreatePost({ type, setTypedData }) {
       },
       body: JSON.stringify(postData),
     });
+    console.log({ response });
     const responseJson = await response?.json();
     const cid = responseJson?.cid;
     console.log("Content added with CID:", cid);
     cidRef.current = "ipfs://" + cid;
   }
 
+  const updateCommentText = (event) => {
+    const newText = event.target.value;
+    setCommentText(newText);
+    console.log({ commentText, newText });
+  };
+
+  const generateCommentPost = () => {
+    const postData = {
+      version: "2.0.0",
+      mainContentFocus: "TEXT_ONLY",
+      metadata_id: uuidv4(),
+      description: "Description",
+      locale: "en-US",
+      content: commentText,
+      external_url: null,
+      attributes: [],
+      appId: "react_lens",
+      name: "comment",
+    };
+    uploadDataToIpfs(postData);
+    // setCommentText("");
+  };
+
   return (
     <div>
-      <form>
-        <h4>File Upload</h4>
-        <input type="file" onChange={handleChange} />
-        <button type="submit">
-          {/* {type === "POST" ? "Upload" : "Comment"} */}
-          Upload
-        </button>
-      </form>
+      {/* <form> */}
+      <h4>File Upload</h4>
+      <input
+        type={type === "POST" ? "File" : "Text"}
+        onChange={type === "POST" ? uploadFile : updateCommentText}
+        value={commentText}
+      />
+      {type === "COMMENT" ? (
+        <button onClick={generateCommentPost}>Comment</button>
+      ) : null}
+      {/* </form> */}
       <button
         onClick={() => {
           if (type === "POST") {
@@ -80,8 +108,7 @@ function CreatePost({ type, setTypedData }) {
           }
         }}
       >
-        Create POST
-        {/* {type === "POST" ? "Create Post" : "Create Comment"} */}
+        {type === "POST" ? "Create Post" : "Create Comment"}
       </button>
     </div>
   );

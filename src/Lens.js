@@ -13,6 +13,7 @@ import {
 import { publicProvider } from "wagmi/providers/public";
 import { getDefaultWallets, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import {
+  collectPost,
   createProfile,
   getPublications,
   mirrorPost,
@@ -85,6 +86,12 @@ function Lens() {
   const [typedData, setTypedData] = useState(null);
   const [signature, setSignature] = useState(null);
 
+  async function createCollect() {
+    const response = await collectPost();
+    setTypedData(response?.data?.createCollectTypedData?.typedData);
+    console.log(response?.data?.createCollectTypedData?.typedData);
+  }
+
   async function createMirror() {
     const response = await mirrorPost();
     setTypedData(response?.data?.createMirrorTypedData?.typedData);
@@ -96,6 +103,7 @@ function Lens() {
     setTypedData(response?.data?.createSetDefaultProfileTypedData?.typedData);
     console.log(response?.data?.createSetDefaultProfileTypedData?.typedData);
   }
+
   async function setPaidFollowModule() {
     const response = await setFollowModule();
     setTypedData(response?.data?.createSetFollowModuleTypedData?.typedData);
@@ -181,6 +189,7 @@ function Lens() {
       </button>
     );
   }
+
   function SignMirrorPostContract() {
     const { data: signer } = useSigner();
 
@@ -222,6 +231,50 @@ function Lens() {
       </button>
     );
   }
+
+  function SignCollectPostContract() {
+    const { data: signer } = useSigner();
+
+    const contract = useContract({
+      address: contractAddress,
+      abi: ABI,
+      signerOrProvider: signer,
+    });
+    console.log({ signer, contract });
+    async function signCollectPostContract() {
+      const { r, s, v } = splitSignature(signature);
+      console.log({ r, s, v });
+      console.log({ values: typedData.value });
+      contract
+        .collectWithSig(
+          {
+            collector: address,
+            profileId: typedData.value.profileId,
+            pubId: typedData.value.pubId,
+            data: typedData.value.data,
+            sig: {
+              v,
+              r,
+              s,
+              deadline: typedData.value.deadline,
+            },
+          },
+          { gasLimit: 500000 }
+        )
+        .then((res) => {
+          console.log({ res });
+        })
+        .catch((err) => {
+          console.log({ err });
+        });
+    }
+    return (
+      <button onClick={signCollectPostContract}>
+        Sign Collect Post Contract
+      </button>
+    );
+  }
+
   function SignCommentPostContract() {
     const { data: signer } = useSigner();
 
@@ -269,6 +322,7 @@ function Lens() {
       </button>
     );
   }
+
   function SignPostContract() {
     const { data: signer } = useSigner();
 
@@ -309,6 +363,7 @@ function Lens() {
     }
     return <button onClick={signPostContract}>Sign Post Contract</button>;
   }
+
   function FollowContract() {
     const { data: signer } = useSigner();
 
@@ -342,6 +397,7 @@ function Lens() {
     }
     return <button onClick={followContract}>Sign Follow Contract</button>;
   }
+
   function SetFollowModuleContract() {
     const { data: signer } = useSigner();
 
@@ -404,6 +460,7 @@ function Lens() {
                 </button>
                 <button onClick={setPaidFollowModule}>Set Follow Module</button>
                 <button onClick={createMirror}>Create Mirror</button>
+                <button onClick={createCollect}>Create Collect</button>
                 {/* <button onClick={createComment}>Comment on Post</button> */}
                 <CreatePost type={"COMMENT"} setTypedData={setTypedData} />
                 {typedData ? (
@@ -418,6 +475,7 @@ function Lens() {
                 <FollowContract />
                 <SetFollowModuleContract />
                 <SignMirrorPostContract />
+                <SignCollectPostContract />
                 <SignCommentPostContract />
               </RainbowKitProvider>
             </WagmiConfig>
