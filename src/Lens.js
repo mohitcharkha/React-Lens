@@ -1,6 +1,5 @@
-import { gql } from "@apollo/client";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import {
   chain,
@@ -8,20 +7,15 @@ import {
   createClient,
   WagmiConfig,
   useAccount,
-  useSignMessage,
-  useSignTypedData,
   useContract,
   useSigner,
 } from "wagmi";
 import { publicProvider } from "wagmi/providers/public";
 import { getDefaultWallets, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import {
-  apolloClient,
-  approveFollow,
-  createPost,
   createProfile,
-  getPendingFollowRequest,
   getPublications,
+  mirrorPost,
   postWithDispatcher,
   requestFollow,
   setDefaultProfile,
@@ -30,19 +24,16 @@ import {
 } from "./utils";
 import { ABI, contractAddress } from "./Constats";
 import { utils } from "ethers";
+import About from "./Pages/About";
+import Profile from "./Pages/Profile";
+import CreatePost from "./Components/CreatePost";
+import CustomConnectButton from "./Components/CustomConnectButton";
+import SignAuthentication from "./Components/SignAuthentication";
+import SignTypedData from "./Components/SignTypedData";
 
 function Lens() {
-  const challenge = useRef(null);
-  const challengeSignature = useRef(null);
   const { splitSignature } = utils;
 
-  const GET_CHALLENGE = `query($request: ChallengeRequest!) {
-  challenge(request: $request) {
-        text
-    }
-  }
-`;
-  const [posts, setPosts] = useState([]);
   const { chains, provider } = useRef(
     configureChains(
       [
@@ -77,67 +68,11 @@ function Lens() {
   ).current;
   const { address } = useAccount();
 
-  const getChallenge = async () => {
-    const resp = await apolloClient.query({
-      query: gql(GET_CHALLENGE),
-      variables: {
-        request: {
-          address,
-        },
-      },
-    });
-    challenge.current = resp.data.challenge.text;
-    console.log(challenge.current);
-  };
-  function SignMsg() {
-    const { signMessageAsync } = useSignMessage();
+  // window.location.reload();
 
-    async function signMsg() {
-      await getChallenge();
-      const signature = await signMessageAsync({ message: challenge.current });
-      challengeSignature.current = signature;
-    }
-    return (
-      <button type="submit" onClick={signMsg}>
-        Sign
-      </button>
-    );
-  }
-
-  function Authenticate() {
-    const AUTHENTICATION = `
-  mutation($request: SignedAuthChallenge!) {
-    authenticate(request: $request) {
-      accessToken
-      refreshToken
-    }
- }
-`;
-
-    const authenticate = async () => {
-      const res = await apolloClient.mutate({
-        mutation: gql(AUTHENTICATION),
-        variables: {
-          request: {
-            address,
-            signature: challengeSignature.current,
-          },
-        },
-      });
-      const accessToken = res.data.authenticate.accessToken;
-      window.sessionStorage.setItem("accessToken", accessToken);
-    };
-
-    return (
-      <button type="submit" onClick={authenticate}>
-        Authenticate
-      </button>
-    );
-  }
   const fetchPosts = () => {
     getPublications().then((pubs) => {
       console.log(pubs);
-      setPosts(pubs);
     });
   };
 
@@ -150,11 +85,12 @@ function Lens() {
   const [typedData, setTypedData] = useState(null);
   const [signature, setSignature] = useState(null);
 
-  async function createNewPost() {
-    const response = await createPost();
-    setTypedData(response?.data?.createPostTypedData?.typedData);
-    console.log(response?.data?.createPostTypedData?.typedData);
+  async function createMirror() {
+    const response = await mirrorPost();
+    setTypedData(response?.data?.createMirrorTypedData?.typedData);
+    console.log(response?.data?.createMirrorTypedData?.typedData);
   }
+
   async function setProfileAsDefault() {
     const response = await setDefaultProfile();
     setTypedData(response?.data?.createSetDefaultProfileTypedData?.typedData);
@@ -170,37 +106,6 @@ function Lens() {
     const response = await setDispatcher();
     setTypedData(response?.data?.createSetDispatcherTypedData?.typedData);
     console.log(response?.data?.createSetDispatcherTypedData?.typedData);
-  }
-  function SignTypedData() {
-    delete typedData.domain.__typename;
-    delete typedData.types.__typename;
-    delete typedData.value.__typename;
-    const { data, status, signTypedData } = useSignTypedData({
-      domain: typedData.domain,
-      types: typedData.types,
-      value: typedData.value,
-    });
-
-    return (
-      <div>
-        <button
-          onClick={() => {
-            console.log("signing types data", typedData);
-            signTypedData();
-          }}
-        >
-          Sign data
-        </button>
-        <div>Status: {status}</div>
-        <div
-          onClick={() => {
-            setSignature(data);
-          }}
-        >
-          Signature: {data}
-        </div>
-      </div>
-    );
   }
 
   function SignDispatcherContract() {
@@ -276,6 +181,94 @@ function Lens() {
       </button>
     );
   }
+  function SignMirrorPostContract() {
+    const { data: signer } = useSigner();
+
+    const contract = useContract({
+      address: contractAddress,
+      abi: ABI,
+      signerOrProvider: signer,
+    });
+    console.log({ signer, contract });
+    async function signMirrorPostContract() {
+      const { r, s, v } = splitSignature(signature);
+      console.log({ r, s, v });
+      console.log({ values: typedData.value });
+      contract
+        .mirrorWithSig({
+          profileId: typedData.value.profileId,
+          profileIdPointed: typedData.value.profileIdPointed,
+          pubIdPointed: typedData.value.pubIdPointed,
+          referenceModuleData: typedData.value.referenceModuleData,
+          referenceModule: typedData.value.referenceModule,
+          referenceModuleInitData: typedData.value.referenceModuleInitData,
+          sig: {
+            v,
+            r,
+            s,
+            deadline: typedData.value.deadline,
+          },
+        })
+        .then((res) => {
+          console.log({ res });
+        })
+        .catch((err) => {
+          console.log({ err });
+        });
+    }
+    return (
+      <button onClick={signMirrorPostContract}>
+        Sign Mirror Post Contract
+      </button>
+    );
+  }
+  function SignCommentPostContract() {
+    const { data: signer } = useSigner();
+
+    const contract = useContract({
+      address: contractAddress,
+      abi: ABI,
+      signerOrProvider: signer,
+    });
+    console.log({ signer, contract });
+    async function signCommentPostContract() {
+      const { r, s, v } = splitSignature(signature);
+      console.log({ r, s, v });
+      console.log({ values: typedData.value });
+      contract
+        .commentWithSig(
+          {
+            profileId: typedData.value.profileId,
+            contentURI: typedData.value.contentURI,
+            profileIdPointed: typedData.value.profileIdPointed,
+            pubIdPointed: typedData.value.pubIdPointed,
+            collectModule: typedData.value.collectModule,
+            collectModuleInitData: typedData.value.collectModuleInitData,
+            referenceModule: typedData.value.referenceModule,
+            referenceModuleInitData: typedData.value.referenceModuleInitData,
+            referenceModuleData: typedData.value.referenceModuleData,
+            sig: {
+              v,
+              r,
+              s,
+              deadline: typedData.value.deadline,
+            },
+          },
+          { gasLimit: 500000 }
+        )
+        .then((res) => {
+          console.log({ res });
+        })
+        .catch((err) => {
+          console.log({ err });
+        });
+    }
+    return (
+      <button onClick={signCommentPostContract}>
+        Sign Comment Post Contract
+      </button>
+    );
+  }
   function SignPostContract() {
     const { data: signer } = useSigner();
 
@@ -290,20 +283,23 @@ function Lens() {
       console.log({ r, s, v });
       console.log({ values: typedData.value });
       contract
-        .postWithSig({
-          profileId: typedData.value.profileId,
-          contentURI: typedData.value.contentURI,
-          collectModule: typedData.value.collectModule,
-          collectModuleInitData: typedData.value.collectModuleInitData,
-          referenceModule: typedData.value.referenceModule,
-          referenceModuleInitData: typedData.value.referenceModuleInitData,
-          sig: {
-            v,
-            r,
-            s,
-            deadline: typedData.value.deadline,
+        .postWithSig(
+          {
+            profileId: typedData.value.profileId,
+            contentURI: typedData.value.contentURI,
+            collectModule: typedData.value.collectModule,
+            collectModuleInitData: typedData.value.collectModuleInitData,
+            referenceModule: typedData.value.referenceModule,
+            referenceModuleInitData: typedData.value.referenceModuleInitData,
+            sig: {
+              v,
+              r,
+              s,
+              deadline: typedData.value.deadline,
+            },
           },
-        })
+          { gasLimit: 500000 }
+        )
         .then((res) => {
           console.log({ res });
         })
@@ -383,32 +379,55 @@ function Lens() {
       </button>
     );
   }
+
   return (
-    <WagmiConfig client={wagmiClient}>
-      <RainbowKitProvider chains={chains}>
-        <ConnectButton />
-        <SignMsg />
-        <Authenticate />
-        <button onClick={fetchPosts}>Fetch Post</button>
-        <button onClick={followProfile}>Follow Profile</button>
-        <button onClick={approveFollow}>Approve Profile</button>
-        <button onClick={getPendingFollowRequest}>
-          Pending Follow Request
-        </button>
-        <button onClick={createProfile}>Create Profile</button>
-        <button onClick={setProfileAsDefault}>Set Default Profile</button>
-        <button onClick={createNewPost}>Create Post</button>
-        <button onClick={createSetDispatcher}>Set dispatcher</button>
-        <button onClick={postWithDispatcher}>Post with dispatcher</button>
-        <button onClick={setPaidFollowModule}>Set Follow Module</button>
-        {typedData ? <SignTypedData /> : null}
-        <SignPostContract />
-        <SignDispatcherContract />
-        <SignSetDefaultProfileContract />
-        <FollowContract />
-        <SetFollowModuleContract />
-      </RainbowKitProvider>
-    </WagmiConfig>
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <WagmiConfig client={wagmiClient}>
+              <RainbowKitProvider chains={chains}>
+                {/* <ConnectButton /> */}
+                <CustomConnectButton />
+                <SignAuthentication />
+                <button onClick={fetchPosts}>Fetch Post</button>
+                <button onClick={followProfile}>Follow Profile</button>
+                <button onClick={createProfile}>Create Profile</button>
+                <button onClick={setProfileAsDefault}>
+                  Set Default Profile
+                </button>
+                <CreatePost type={"POST"} setTypedData={setTypedData} />
+                <button onClick={createSetDispatcher}>Set dispatcher</button>
+                <button onClick={postWithDispatcher}>
+                  Post with dispatcher
+                </button>
+                <button onClick={setPaidFollowModule}>Set Follow Module</button>
+                <button onClick={createMirror}>Create Mirror</button>
+                {/* <button onClick={createComment}>Comment on Post</button> */}
+                <CreatePost type={"COMMENT"} setTypedData={setTypedData} />
+                {typedData ? (
+                  <SignTypedData
+                    typedData={typedData}
+                    setSignature={setSignature}
+                  />
+                ) : null}
+                <SignPostContract />
+                <SignDispatcherContract />
+                <SignSetDefaultProfileContract />
+                <FollowContract />
+                <SetFollowModuleContract />
+                <SignMirrorPostContract />
+                <SignCommentPostContract />
+              </RainbowKitProvider>
+            </WagmiConfig>
+          }
+          exact
+        />
+        <Route path="/about" element={<About />} />
+        <Route path="/profile" element={<Profile />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 export default Lens;

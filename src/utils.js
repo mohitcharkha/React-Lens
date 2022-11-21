@@ -21,10 +21,31 @@ const authLink = new ApolloLink((operation, forward) => {
   return forward(operation);
 });
 
-export const apolloClient = new ApolloClient({
+const apolloClient = new ApolloClient({
   link: authLink.concat(httpLink),
   cache: new InMemoryCache(),
 });
+
+const AUTHENTICATION = `
+mutation($request: SignedAuthChallenge!) {
+  authenticate(request: $request) {
+    accessToken
+    refreshToken
+  }
+}
+`;
+
+export const getAuthentication = async (address, signature) => {
+  return await apolloClient.mutate({
+    mutation: gql(AUTHENTICATION),
+    variables: {
+      request: {
+        address,
+        signature,
+      },
+    },
+  });
+};
 
 const GET_PUBLICATIONS_QUERY = `
 query {
@@ -110,12 +131,12 @@ const REQUEST_FOLLOW_QUERY = `
     createFollowTypedData(
       request: { follow: [{ profile: "0x5285", followModule: {
         feeFollowModule: {
-          amount: {
-            currency: "0x3C68CE8504087f89c640D02d133646d98e64ddd9",
-            value: "0.001"
-              }
-        }  
-     } }] }
+         amount: {
+          currency: "0x5B67676a984807a212b1c59eBFc9B3568a474F0a",
+          value: "0.001"
+            }
+          }
+      } }] }
     ) {
       id
       expiresAt
@@ -153,151 +174,26 @@ export const requestFollow = async () => {
     mutation: gql(REQUEST_FOLLOW_QUERY),
   });
 };
-
-const APPROVE_FOLLOW = `
-mutation($request: FollowRequest!) { 
- follow(request: $request)
-}
+const GET_CHALLENGE = `query($request: ChallengeRequest!) {
+  challenge(request: $request) {
+        text
+    }
+  }
 `;
-
-export const approveFollow = () => {
-  return apolloClient.mutate({
-    mutation: gql(APPROVE_FOLLOW),
+export const getChallengeText = async (address) => {
+  return await apolloClient.query({
+    query: gql(GET_CHALLENGE),
     variables: {
       request: {
-        profileId: "0x01",
+        address,
       },
     },
   });
 };
 
-const PENDING_FOLLOW_REQUEST = `query Followers {
-    pendingApprovalFollows(request: { 
-                limit: 10
-               }) {
-      items {
-        id
-        name
-        bio
-        attributes {
-          displayType
-          traitType
-          key
-          value
-        }
-        followNftAddress
-        metadata
-        isDefault
-        handle
-        picture {
-          ... on NftImage {
-            contractAddress
-            tokenId
-            uri
-            verified
-          }
-          ... on MediaSet {
-            original {
-              mimeType
-              height
-              width
-              url
-            }
-            small {
-              url
-              width
-              height
-              mimeType
-            }
-            medium {
-              url
-              width
-              height
-              mimeType
-            }
-          }
-        }
-        coverPicture {
-          ... on NftImage {
-            contractAddress
-            tokenId
-            uri
-            verified
-          }
-          ... on MediaSet {
-            original {
-              width
-              url
-              height
-              mimeType
-            }
-            small {
-              height
-              width
-              url
-              mimeType
-            }
-            medium {
-              url
-              width
-              height
-              mimeType
-            }
-          }
-        }
-        ownedBy
-        dispatcher {
-          address
-          canUseRelay
-        }
-        stats {
-          totalFollowers
-          totalFollowing
-          totalPosts
-          totalComments
-          totalMirrors
-          totalPublications
-          totalCollects
-        }
-        followModule {
-          ... on FeeFollowModuleSettings {
-            type
-            amount {
-              asset {
-                name
-                symbol
-                decimals
-                address
-              }
-              value
-            }
-            recipient
-          }
-          ... on ProfileFollowModuleSettings {
-           type
-          }
-          ... on RevertFollowModuleSettings {
-           type
-          }
-        }
-      }
-      pageInfo {
-        prev
-        next
-        totalCount
-      }
-    }
-  }`;
-export const getPendingFollowRequest = async () => {
-  const res = await apolloClient.query({
-    query: gql(PENDING_FOLLOW_REQUEST),
-  });
-  console.log(res);
-};
-
 const CREATE_PROFILE = `mutation CreateProfile {
     createProfile(request:{ 
-                  handle: "UserWithFollowModule",
+                  handle: "NewAccountNewUser",
                   profilePictureUri: null,
                   followNFTURI: null,
                   followModule: null
@@ -352,10 +248,10 @@ export const setDefaultProfile = () => {
   });
 };
 
-const CREATE_POST = `mutation CreatePostTypedData {
+const CREATE_POST = `mutation CreatePostTypedData($cid: Url!) {
     createPostTypedData(request: {
       profileId: "0x5285",
-      contentURI: "ipfs://bafkreieqpzbdwrhzafbbrmxn3247eo6tx25rjztf3kqlanwz2ydqv45rbu",
+      contentURI:  $cid,
       collectModule: {
         revertCollectModule: true
       },
@@ -389,17 +285,116 @@ const CREATE_POST = `mutation CreatePostTypedData {
           referenceModuleInitData
         }
       }
-    }
+    },
   }`;
 
-export const createPost = async () => {
+export const createPost = async (cid) => {
+  console.log({ cid });
   return apolloClient.mutate({
     mutation: gql(CREATE_POST),
+    variables: {
+      cid,
+    },
   });
 };
 
+const MIRROR_POST = `mutation CreateMirrorTypedData {
+  createMirrorTypedData(request: {
+    profileId: "0x5285",
+    publicationId: "0x51c5-0x12",
+    referenceModule: {
+      followerOnlyReferenceModule: false
+    }
+  }) {
+    id
+    expiresAt
+    typedData {
+      types {
+        MirrorWithSig {
+          name
+          type
+        }
+      }
+      domain {
+        name
+        chainId
+        version
+        verifyingContract
+      }
+      value {
+        nonce
+        deadline
+        profileId
+        profileIdPointed
+        pubIdPointed
+        referenceModule
+        referenceModuleData
+        referenceModuleInitData
+      }
+    }
+  }
+}`;
+
+export const mirrorPost = async () => {
+  return apolloClient.mutate({
+    mutation: gql(MIRROR_POST),
+  });
+};
+
+const COMMENT_POST = `mutation CreateCommentTypedData($cid: Url!) {
+  createCommentTypedData(request: {
+    profileId: "0x5285",
+    publicationId: "0x51c5-0x12",
+    contentURI: $cid,
+    collectModule: {
+      revertCollectModule: true
+    },
+    referenceModule: {
+      followerOnlyReferenceModule: false
+    }
+  }) {
+    id
+    expiresAt
+    typedData {
+      types {
+        CommentWithSig {
+          name
+          type
+        }
+      }
+      domain {
+        name
+        chainId
+        version
+        verifyingContract
+      }
+      value {
+        nonce
+        deadline
+        profileId
+        profileIdPointed
+        pubIdPointed
+        contentURI
+        referenceModuleData
+        collectModule
+        collectModuleInitData
+        referenceModule
+        referenceModuleInitData
+      }
+    }
+  }
+}`;
+
+export const commentPost = async (cid) => {
+  console.log({ cid });
+  return apolloClient.mutate({
+    mutation: gql(COMMENT_POST),
+    variables: {
+      cid,
+    },
+  });
+};
 // dispatcher: "0xE1ec35AE9ceb98d3b6DB6A4e0aa856BEA969B4DF"
-// dispatcher: "0x1638CF7D0E72B2e3b5eBECBe794D77c90aB02b26",
 const SET_DISPATCHER = `mutation CreateSetDispatcherTypedData {
     createSetDispatcherTypedData(request:{
         profileId: "0x5285",
@@ -472,7 +467,7 @@ const SET_FOLLOW_MODULE = `mutation CreateSetFollowModuleTypedData {
     followModule: {
       feeFollowModule: {
         amount: {
-          currency: "0x3C68CE8504087f89c640D02d133646d98e64ddd9",
+          currency: "0x5B67676a984807a212b1c59eBFc9B3568a474F0a",
           value: "0.001"
             },
             recipient: "0xE1ec35AE9ceb98d3b6DB6A4e0aa856BEA969B4DF"
