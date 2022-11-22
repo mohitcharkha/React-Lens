@@ -1,12 +1,10 @@
 import { useRef, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
 import {
   chain,
   configureChains,
   createClient,
   WagmiConfig,
-  useAccount,
   useContract,
   useSigner,
 } from "wagmi";
@@ -31,6 +29,13 @@ import CreatePost from "./Components/CreatePost";
 import CustomConnectButton from "./Components/CustomConnectButton";
 import SignAuthentication from "./Components/SignAuthentication";
 import SignTypedData from "./Components/SignTypedData";
+import CreateComment from "./Components/CreateComment";
+import PostContractSigner from "./ContractSigners/PostContractSigner";
+import FollowContractSigner from "./ContractSigners/FollowContractSigner";
+import MirrorPostContractSigner from "./ContractSigners/MirrorPostContractSigner";
+import CollectPostContractSigner from "./ContractSigners/CollectPostContractSigner";
+import CommentPostContractSigner from "./ContractSigners/CommentPostContractSigner";
+import SetDispatcherContractSigner from "./ContractSigners/SetDispatcherContractSigner";
 
 function Lens() {
   const { splitSignature } = utils;
@@ -67,7 +72,6 @@ function Lens() {
       provider,
     })
   ).current;
-  const { address } = useAccount();
 
   // window.location.reload();
 
@@ -116,42 +120,6 @@ function Lens() {
     console.log(response?.data?.createSetDispatcherTypedData?.typedData);
   }
 
-  function SignDispatcherContract() {
-    const { data: signer } = useSigner();
-
-    const contract = useContract({
-      address: contractAddress,
-      abi: ABI,
-      signerOrProvider: signer,
-    });
-    console.log({ signer, contract });
-    async function signDispatcherContract() {
-      const { r, s, v } = splitSignature(signature);
-      console.log({ r, s, v });
-      console.log({ values: typedData.value });
-      contract
-        .setDispatcherWithSig({
-          profileId: typedData.value.profileId,
-          dispatcher: typedData.value.dispatcher,
-          sig: {
-            v,
-            r,
-            s,
-            deadline: typedData.value.deadline,
-          },
-        })
-        .then((res) => {
-          console.log({ res });
-        })
-        .catch((err) => {
-          console.log({ err });
-        });
-    }
-    return (
-      <button onClick={signDispatcherContract}>Sign Dispatcher Contract</button>
-    );
-  }
-
   function SignSetDefaultProfileContract() {
     const { data: signer } = useSigner();
 
@@ -188,214 +156,6 @@ function Lens() {
         Sign Set Default Profile Contract
       </button>
     );
-  }
-
-  function SignMirrorPostContract() {
-    const { data: signer } = useSigner();
-
-    const contract = useContract({
-      address: contractAddress,
-      abi: ABI,
-      signerOrProvider: signer,
-    });
-    console.log({ signer, contract });
-    async function signMirrorPostContract() {
-      const { r, s, v } = splitSignature(signature);
-      console.log({ r, s, v });
-      console.log({ values: typedData.value });
-      contract
-        .mirrorWithSig({
-          profileId: typedData.value.profileId,
-          profileIdPointed: typedData.value.profileIdPointed,
-          pubIdPointed: typedData.value.pubIdPointed,
-          referenceModuleData: typedData.value.referenceModuleData,
-          referenceModule: typedData.value.referenceModule,
-          referenceModuleInitData: typedData.value.referenceModuleInitData,
-          sig: {
-            v,
-            r,
-            s,
-            deadline: typedData.value.deadline,
-          },
-        })
-        .then((res) => {
-          console.log({ res });
-        })
-        .catch((err) => {
-          console.log({ err });
-        });
-    }
-    return (
-      <button onClick={signMirrorPostContract}>
-        Sign Mirror Post Contract
-      </button>
-    );
-  }
-
-  function SignCollectPostContract() {
-    const { data: signer } = useSigner();
-
-    const contract = useContract({
-      address: contractAddress,
-      abi: ABI,
-      signerOrProvider: signer,
-    });
-    console.log({ signer, contract });
-    async function signCollectPostContract() {
-      const { r, s, v } = splitSignature(signature);
-      console.log({ r, s, v });
-      console.log({ values: typedData.value });
-      contract
-        .collectWithSig(
-          {
-            collector: address,
-            profileId: typedData.value.profileId,
-            pubId: typedData.value.pubId,
-            data: typedData.value.data,
-            sig: {
-              v,
-              r,
-              s,
-              deadline: typedData.value.deadline,
-            },
-          },
-          { gasLimit: 500000 }
-        )
-        .then((res) => {
-          console.log({ res });
-        })
-        .catch((err) => {
-          console.log({ err });
-        });
-    }
-    return (
-      <button onClick={signCollectPostContract}>
-        Sign Collect Post Contract
-      </button>
-    );
-  }
-
-  function SignCommentPostContract() {
-    const { data: signer } = useSigner();
-
-    const contract = useContract({
-      address: contractAddress,
-      abi: ABI,
-      signerOrProvider: signer,
-    });
-    console.log({ signer, contract });
-    async function signCommentPostContract() {
-      const { r, s, v } = splitSignature(signature);
-      console.log({ r, s, v });
-      console.log({ values: typedData.value });
-      contract
-        .commentWithSig(
-          {
-            profileId: typedData.value.profileId,
-            contentURI: typedData.value.contentURI,
-            profileIdPointed: typedData.value.profileIdPointed,
-            pubIdPointed: typedData.value.pubIdPointed,
-            collectModule: typedData.value.collectModule,
-            collectModuleInitData: typedData.value.collectModuleInitData,
-            referenceModule: typedData.value.referenceModule,
-            referenceModuleInitData: typedData.value.referenceModuleInitData,
-            referenceModuleData: typedData.value.referenceModuleData,
-            sig: {
-              v,
-              r,
-              s,
-              deadline: typedData.value.deadline,
-            },
-          },
-          { gasLimit: 500000 }
-        )
-        .then((res) => {
-          console.log({ res });
-        })
-        .catch((err) => {
-          console.log({ err });
-        });
-    }
-    return (
-      <button onClick={signCommentPostContract}>
-        Sign Comment Post Contract
-      </button>
-    );
-  }
-
-  function SignPostContract() {
-    const { data: signer } = useSigner();
-
-    const contract = useContract({
-      address: contractAddress,
-      abi: ABI,
-      signerOrProvider: signer,
-    });
-    console.log({ signer, contract });
-    async function signPostContract() {
-      const { r, s, v } = splitSignature(signature);
-      console.log({ r, s, v });
-      console.log({ values: typedData.value });
-      contract
-        .postWithSig(
-          {
-            profileId: typedData.value.profileId,
-            contentURI: typedData.value.contentURI,
-            collectModule: typedData.value.collectModule,
-            collectModuleInitData: typedData.value.collectModuleInitData,
-            referenceModule: typedData.value.referenceModule,
-            referenceModuleInitData: typedData.value.referenceModuleInitData,
-            sig: {
-              v,
-              r,
-              s,
-              deadline: typedData.value.deadline,
-            },
-          },
-          { gasLimit: 500000 }
-        )
-        .then((res) => {
-          console.log({ res });
-        })
-        .catch((err) => {
-          console.log({ err });
-        });
-    }
-    return <button onClick={signPostContract}>Sign Post Contract</button>;
-  }
-
-  function FollowContract() {
-    const { data: signer } = useSigner();
-
-    const contract = useContract({
-      address: contractAddress,
-      abi: ABI,
-      signerOrProvider: signer,
-    });
-    async function followContract() {
-      const { r, s, v } = splitSignature(signature);
-      console.log({ r, s, v });
-      console.log({ values: typedData.value });
-      contract
-        .followWithSig({
-          follower: address,
-          profileIds: typedData.value.profileIds,
-          datas: typedData.value.datas,
-          sig: {
-            v,
-            r,
-            s,
-            deadline: typedData.value.deadline,
-          },
-        })
-        .then((res) => {
-          console.log({ res });
-        })
-        .catch((err) => {
-          console.log({ err });
-        });
-    }
-    return <button onClick={followContract}>Sign Follow Contract</button>;
   }
 
   function SetFollowModuleContract() {
@@ -453,7 +213,7 @@ function Lens() {
                 <button onClick={setProfileAsDefault}>
                   Set Default Profile
                 </button>
-                <CreatePost type={"POST"} setTypedData={setTypedData} />
+                <CreatePost setTypedData={setTypedData} />
                 <button onClick={createSetDispatcher}>Set dispatcher</button>
                 <button onClick={postWithDispatcher}>
                   Post with dispatcher
@@ -462,21 +222,39 @@ function Lens() {
                 <button onClick={createMirror}>Create Mirror</button>
                 <button onClick={createCollect}>Create Collect</button>
                 {/* <button onClick={createComment}>Comment on Post</button> */}
-                <CreatePost type={"COMMENT"} setTypedData={setTypedData} />
+                <CreateComment setTypedData={setTypedData} />
                 {typedData ? (
                   <SignTypedData
                     typedData={typedData}
                     setSignature={setSignature}
                   />
                 ) : null}
-                <SignPostContract />
-                <SignDispatcherContract />
+                <PostContractSigner
+                  signature={signature}
+                  typedData={typedData}
+                />
+                <SetDispatcherContractSigner
+                  signature={signature}
+                  typedData={typedData}
+                />
                 <SignSetDefaultProfileContract />
-                <FollowContract />
+                <FollowContractSigner
+                  signature={signature}
+                  typedData={typedData}
+                />
                 <SetFollowModuleContract />
-                <SignMirrorPostContract />
-                <SignCollectPostContract />
-                <SignCommentPostContract />
+                <MirrorPostContractSigner
+                  signature={signature}
+                  typedData={typedData}
+                />
+                <CollectPostContractSigner
+                  signature={signature}
+                  typedData={typedData}
+                />
+                <CommentPostContractSigner
+                  signature={signature}
+                  typedData={typedData}
+                />
               </RainbowKitProvider>
             </WagmiConfig>
           }

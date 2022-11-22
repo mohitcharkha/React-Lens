@@ -5,6 +5,7 @@ import {
   HttpLink,
   InMemoryCache,
 } from "@apollo/client";
+import { IPFS_TOKEN } from "./Constats";
 
 const API_URL = "https://api-mumbai.lens.dev";
 const httpLink = new HttpLink({ uri: API_URL });
@@ -579,3 +580,20 @@ export const enabledCurr = async () => {
   });
   console.log({ res });
 };
+
+export async function uploadDataToIpfs(postData) {
+  console.log({ postData });
+  const response = await fetch("https://api.web3.storage/upload", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${IPFS_TOKEN}`,
+      contentType: "application/json",
+    },
+    body: JSON.stringify(postData),
+  });
+  console.log({ response });
+  const responseJson = await response?.json();
+  const cid = responseJson?.cid;
+  console.log("Content added with CID:", cid);
+  return "ipfs://" + cid;
+}
