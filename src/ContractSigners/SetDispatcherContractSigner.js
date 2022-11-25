@@ -11,7 +11,6 @@ function SetDispatcherContractSigner({ signature, typedData }) {
     abi: ABI,
     signerOrProvider: signer,
   });
-  console.log({ signer, contract });
   async function signDispatcherContract() {
     const { r, s, v } = splitSignature(signature);
     console.log({ r, s, v });

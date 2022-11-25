@@ -13,7 +13,6 @@ const CollectPostContractSigner = ({ signature, typedData }) => {
     abi: ABI,
     signerOrProvider: signer,
   });
-  console.log({ signer, contract });
   async function signCollectPostContract() {
     const { r, s, v } = splitSignature(signature);
     console.log({ r, s, v });
