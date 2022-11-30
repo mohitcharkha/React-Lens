@@ -11,6 +11,7 @@ import {
 import { publicProvider } from "wagmi/providers/public";
 import { getDefaultWallets, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import {
+  addReaction,
   collectPost,
   createProfile,
   getPublications,
@@ -36,6 +37,7 @@ import MirrorPostContractSigner from "./ContractSigners/MirrorPostContractSigner
 import CollectPostContractSigner from "./ContractSigners/CollectPostContractSigner";
 import CommentPostContractSigner from "./ContractSigners/CommentPostContractSigner";
 import SetDispatcherContractSigner from "./ContractSigners/SetDispatcherContractSigner";
+import Publish from "./Pages/Publish";
 
 function Lens() {
   const { splitSignature } = utils;
@@ -74,6 +76,9 @@ function Lens() {
   ).current;
 
   // window.location.reload();
+  const resultId = useRef(null);
+  const [typedData, setTypedData] = useState(null);
+  const [signature, setSignature] = useState(null);
 
   const fetchPosts = () => {
     getPublications().then((pubs) => {
@@ -83,39 +88,43 @@ function Lens() {
 
   async function followProfile() {
     const response = await requestFollow();
+    console.log({ response });
+    resultId.current = response?.data?.createFollowTypedData?.id;
     setTypedData(response?.data?.createFollowTypedData?.typedData);
     console.log(response?.data?.createFollowTypedData?.typedData);
   }
 
-  const [typedData, setTypedData] = useState(null);
-  const [signature, setSignature] = useState(null);
-
   async function createCollect() {
     const response = await collectPost();
+    resultId.current = response?.data?.createCollectTypedData?.id;
     setTypedData(response?.data?.createCollectTypedData?.typedData);
     console.log(response?.data?.createCollectTypedData?.typedData);
   }
 
   async function createMirror() {
     const response = await mirrorPost();
+    resultId.current = response?.data?.createMirrorTypedData?.id;
     setTypedData(response?.data?.createMirrorTypedData?.typedData);
     console.log(response?.data?.createMirrorTypedData?.typedData);
   }
 
   async function setProfileAsDefault() {
     const response = await setDefaultProfile();
+    resultId.current = response?.data?.createSetDefaultProfileTypedData?.id;
     setTypedData(response?.data?.createSetDefaultProfileTypedData?.typedData);
     console.log(response?.data?.createSetDefaultProfileTypedData?.typedData);
   }
 
   async function setPaidFollowModule() {
     const response = await setFollowModule();
+    resultId.current = response?.data?.createSetFollowModuleTypedData?.id;
     setTypedData(response?.data?.createSetFollowModuleTypedData?.typedData);
     console.log(response?.data?.createSetFollowModuleTypedData?.typedData);
   }
 
   async function createSetDispatcher() {
     const response = await setDispatcher();
+    resultId.current = response?.data?.createSetDispatcherTypedData?.id;
     setTypedData(response?.data?.createSetDispatcherTypedData?.typedData);
     console.log(response?.data?.createSetDispatcherTypedData?.typedData);
   }
@@ -128,7 +137,7 @@ function Lens() {
       abi: ABI,
       signerOrProvider: signer,
     });
-    console.log({ signer, contract });
+
     async function signSetDefaultProfileContract() {
       const { r, s, v } = splitSignature(signature);
       console.log({ r, s, v });
@@ -151,6 +160,7 @@ function Lens() {
           console.log({ err });
         });
     }
+
     return (
       <button onClick={signSetDefaultProfileContract}>
         Sign Set Default Profile Contract
@@ -214,6 +224,7 @@ function Lens() {
                   Set Default Profile
                 </button>
                 <CreatePost setTypedData={setTypedData} />
+                <button onClick={addReaction}>Upvote Comment</button>
                 <button onClick={createSetDispatcher}>Set dispatcher</button>
                 <button onClick={postWithDispatcher}>
                   Post with dispatcher
@@ -227,6 +238,7 @@ function Lens() {
                   <SignTypedData
                     typedData={typedData}
                     setSignature={setSignature}
+                    id={resultId.current}
                   />
                 ) : null}
                 <PostContractSigner
@@ -262,6 +274,7 @@ function Lens() {
         />
         <Route path="/about" element={<About />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/publish" element={<Publish />} />
       </Routes>
     </BrowserRouter>
   );

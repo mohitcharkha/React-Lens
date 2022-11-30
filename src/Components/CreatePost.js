@@ -3,6 +3,7 @@ import {
   createPost,
   uploadDataToIpfs,
   uploadMetaData,
+  uploadToNFTPort,
   validatePublicationMetadata,
 } from "../utils";
 import { v4 as uuidv4 } from "uuid";
@@ -38,6 +39,39 @@ function CreatePost({ setTypedData }) {
     console.log("Image cid ", cid);
     console.log({ mediaFiles });
     // access file here
+    // const imageLink = `${cid}.ipfs.w3s.link`;
+    // const imageLink =
+    const imageLink = `ipfs://${cid}`;
+    //   "https://static.plgworks.com/assets/images/open-source/applogger.png";
+
+    // const postData = {
+    //   description: "Description",
+    //   file_url: imageLink,
+    //   name: mediaFiles[0].name,
+    //   attributes: [
+    //     { trait_type: "type", displayType: "string", value: "image" },
+    //   ],
+    //   custom_fields: {
+    //     version: "2.0.0",
+    //     mainContentFocus: "IMAGE",
+    //     metadata_id: uuidv4(),
+    //     locale: "en-US",
+    //     content: "Content Testing",
+    //     external_url: null,
+    //     imageMimeType: mediaFiles[0].type,
+    //     media: [
+    //       {
+    //         item: imageLink,
+    //         type: mediaFiles[0].type,
+    //       },
+    //     ],
+    //     appId: "react_lens",
+    //   },
+    // };
+    // const bufferData = Buffer.from(JSON.stringify(postData));
+    // validatePublicationMetadata(postData);
+    // image: `ipfs://${cid}`,
+    // imageMimeType: mediaFiles[0]?.type,
 
     const postData = {
       version: "2.0.0",
@@ -45,28 +79,24 @@ function CreatePost({ setTypedData }) {
       metadata_id: uuidv4(),
       description: "Description",
       locale: "en-US",
-      content: "Content Testing",
-      external_url: null,
-      image: `ipfs://${cid}`,
+      content: "Image",
+      image: imageLink,
       imageMimeType: mediaFiles[0].type,
       name: mediaFiles[0].name,
-      attributes: [
-        { traitType: "type", displayType: "string", value: "image" },
-      ],
+      attributes: [],
       media: [
         {
-          item: `ipfs://${cid}`,
+          item: imageLink,
           type: mediaFiles[0].type,
         },
       ],
+      tags: [],
       appId: "react_lens",
     };
-    // const bufferData = Buffer.from(JSON.stringify(postData));
     validatePublicationMetadata(postData);
-    // image: `ipfs://${cid}`,
-    // imageMimeType: mediaFiles[0]?.type,
 
     cidRef.current = await uploadDataToIpfs(postData);
+    // cidRef.current = await uploadToNFTPort(postData);
   }
 
   return (

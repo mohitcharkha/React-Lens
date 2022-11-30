@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { commentPost, uploadDataToIpfs } from "../utils";
 import { v4 as uuidv4 } from "uuid";
 
-const CreateComment = (setTypedData) => {
+const CreateComment = ({ setTypedData }) => {
   const [commentText, setCommentText] = useState("");
   async function createComment(cid) {
     console.log("create comment", { cid });
@@ -31,6 +31,7 @@ const CreateComment = (setTypedData) => {
       attributes: [],
       appId: "react_lens",
       name: "comment",
+      tags: [],
     };
     cidRef.current = await uploadDataToIpfs(postData);
     // setCommentText("");

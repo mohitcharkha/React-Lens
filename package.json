@@ -12,6 +12,7 @@
     "crypto-js": "^4.1.1",
     "ethers": "5.7.2",
     "ipfs": "^0.65.0",
+    "nft.storage": "^7.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.4.3",
